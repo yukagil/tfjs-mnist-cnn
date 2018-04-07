@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MNIST recognition with TensorFlow.js</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.6.2/css/bulma.min.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">MNIST recognition with TensorFlow.js</h1>
+    <h2 class="subtitle">Using Keras pre-trained model (CNN)</h2>
+    <div class="columns is-centered">
+      <div class="column is-narrow">
+        <canvas id="draw-area" width="280" height="280" style="border: 2px solid;"></canvas>
+        <div class="field is-grouped">
+          <p class="control">
+            <a id="predict-button" class="button is-link is-loading" onclick="prediction()">
+              Prediction
+            </a>
+          </p>
+          <p class="control">
+            <a class="button" onclick="reset()">
+              Reset
+            </a>
+          </p>
+        </div>
+      </div>
+      <div class="column is-3">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Number</th>
+              <th>Accuracy</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>0</th>
+              <td class="accuracy" data-row-index="0">-</td>
+            </tr>
+            <tr>
+              <th>1</th>
+              <td class="accuracy" data-row-index="1">-</td>
+            </tr>
+            <tr>
+              <th>2</th>
+              <td class="accuracy" data-row-index="2">-</td>
+            </tr>
+            <tr>
+              <th>3</th>
+              <td class="accuracy" data-row-index="3">-</td>
+            </tr>
+            <tr>
+              <th>4</th>
+              <td class="accuracy" data-row-index="4">-</td>
+            </tr>
+            <tr>
+              <th>5</th>
+              <td class="accuracy" data-row-index="5">-</td>
+            </tr>
+            <tr>
+              <th>6</th>
+              <td class="accuracy" data-row-index="6">-</td>
+            </tr>
+            <tr>
+              <th>7</th>
+              <td class="accuracy" data-row-index="7">-</td>
+            </tr>
+            <tr>
+              <th>8</th>
+              <td class="accuracy" data-row-index="8">-</td>
+            </tr>
+            <tr>
+              <th>9</th>
+              <td class="accuracy" data-row-index="9">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.6.1"></script>
+    <script>
+
+      // init SignaturePad
+      const drawElement = document.getElementById('draw-area');
+      const signaturePad = new SignaturePad(drawElement, {
+         minWidth: 6,
+         maxWidth: 6,
+         penColor: 'white',
+         backgroundColor: 'black',
+      });
+
+      // load pre-trained model
+      let model;
+      tf.loadModel('/model/model.json')
+        .then(pretrainedModel => {
+          document.getElementById('predict-button').classList.remove('is-loading');
+          model = pretrainedModel;
+        });
+
+      function getImageData() {
+        const inputWidth = inputHeight = 28;
+
+        // resize
+        const tmpCanvas = document.createElement('canvas').getContext('2d');
+        tmpCanvas.drawImage(drawElement, 0, 0, inputWidth, inputHeight);
+
+        // convert grayscale
+        let imageData = tmpCanvas.getImageData(0, 0, inputWidth, inputHeight);
+        for (let i = 0; i < imageData.data.length; i+=4) {
+          const avg = (imageData.data[i] + imageData.data[i+1] + imageData.data[i+2]) / 3;
+          imageData.data[i] = imageData.data[i+1] = imageData.data[i+2] = avg;
+        }
+
+        return imageData;
+      }
+
+      function getAccuracyScores(imageData) {
+        // convert to tensor and normalized (shape: [width, height, channels])
+        const channels = 1; // grayscale
+        let input = tf.fromPixels(imageData, channels).div(tf.scalar(255));
+
+        // reshape input format (shape: [batch_size, width, height, channels])
+        input = input.expandDims();
+
+        const prediction = model.predict(input);
+        prediction.print(true) // for debug
+
+        return prediction.dataSync();
+      }
+
+      function prediction() {
+        const imageData = getImageData();
+        const accuracyScores = getAccuracyScores(imageData);
+        const maxAccuracy = accuracyScores.indexOf(Math.max.apply(null, accuracyScores));
+
+        const elements = document.querySelectorAll(".accuracy");
+        elements.forEach(el => {
+          el.parentNode.classList.remove('is-selected');
+          const rowIndex = Number(el.dataset.rowIndex);
+          if (maxAccuracy === rowIndex) {
+            el.parentNode.classList.add('is-selected');
+          }
+          el.innerText = accuracyScores[rowIndex];
+        })
+      }
+
+      function reset() {
+        signaturePad.clear();
+        let elements = document.querySelectorAll(".accuracy");
+        elements.forEach(el => {
+          el.parentNode.classList.remove('is-selected');
+          el.innerText = '-';
+        })
+      }
+
+   </script>
+</body>
+</html>
