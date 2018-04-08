@@ -80,86 +80,86 @@
       </div>
     </div>
   </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.8.0"></script>
-    <script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.8.0"></script>
+  <script>
 
-      // init SignaturePad
-      const drawElement = document.getElementById('draw-area');
-      const signaturePad = new SignaturePad(drawElement, {
-         minWidth: 6,
-         maxWidth: 6,
-         penColor: 'white',
-         backgroundColor: 'black',
+    // init SignaturePad
+    const drawElement = document.getElementById('draw-area');
+    const signaturePad = new SignaturePad(drawElement, {
+       minWidth: 6,
+       maxWidth: 6,
+       penColor: 'white',
+       backgroundColor: 'black',
+    });
+
+    // load pre-trained model
+    let model;
+    tf.loadModel('/model/model.json')
+      .then(pretrainedModel => {
+        document.getElementById('predict-button').classList.remove('is-loading');
+        model = pretrainedModel;
       });
 
-      // load pre-trained model
-      let model;
-      tf.loadModel('/model/model.json')
-        .then(pretrainedModel => {
-          document.getElementById('predict-button').classList.remove('is-loading');
-          model = pretrainedModel;
-        });
+    function getImageData() {
+      const inputWidth = inputHeight = 28;
 
-      function getImageData() {
-        const inputWidth = inputHeight = 28;
+      // resize
+      const tmpCanvas = document.createElement('canvas').getContext('2d');
+      tmpCanvas.drawImage(drawElement, 0, 0, inputWidth, inputHeight);
 
-        // resize
-        const tmpCanvas = document.createElement('canvas').getContext('2d');
-        tmpCanvas.drawImage(drawElement, 0, 0, inputWidth, inputHeight);
+      // convert grayscale
+      let imageData = tmpCanvas.getImageData(0, 0, inputWidth, inputHeight);
+      for (let i = 0; i < imageData.data.length; i+=4) {
+        const avg = (imageData.data[i] + imageData.data[i+1] + imageData.data[i+2]) / 3;
+        imageData.data[i] = imageData.data[i+1] = imageData.data[i+2] = avg;
+      }
 
-        // convert grayscale
-        let imageData = tmpCanvas.getImageData(0, 0, inputWidth, inputHeight);
-        for (let i = 0; i < imageData.data.length; i+=4) {
-          const avg = (imageData.data[i] + imageData.data[i+1] + imageData.data[i+2]) / 3;
-          imageData.data[i] = imageData.data[i+1] = imageData.data[i+2] = avg;
+      return imageData;
+    }
+
+    function getAccuracyScores(imageData) {
+      // convert to tensor (shape: [width, height, channels])
+      const channels = 1; // grayscale
+      let input = tf.fromPixels(imageData, channels);
+
+      // normalized
+      input = tf.cast(input, 'float32').div(tf.scalar(255));
+
+      // reshape input format (shape: [batch_size, width, height, channels])
+      input = input.expandDims();
+
+      // predict
+      const prediction = model.predict(input);
+
+      return prediction.dataSync();
+    }
+
+    function prediction() {
+      const imageData = getImageData();
+      const accuracyScores = getAccuracyScores(imageData);
+      const maxAccuracy = accuracyScores.indexOf(Math.max.apply(null, accuracyScores));
+
+      const elements = document.querySelectorAll(".accuracy");
+      elements.forEach(el => {
+        el.parentNode.classList.remove('is-selected');
+        const rowIndex = Number(el.dataset.rowIndex);
+        if (maxAccuracy === rowIndex) {
+          el.parentNode.classList.add('is-selected');
         }
+        el.innerText = accuracyScores[rowIndex];
+      })
+    }
 
-        return imageData;
-      }
+    function reset() {
+      signaturePad.clear();
+      let elements = document.querySelectorAll(".accuracy");
+      elements.forEach(el => {
+        el.parentNode.classList.remove('is-selected');
+        el.innerText = '-';
+      })
+    }
 
-      function getAccuracyScores(imageData) {
-        // convert to tensor (shape: [width, height, channels])
-        const channels = 1; // grayscale
-        let input = tf.fromPixels(imageData, channels);
-
-        // normalized
-        input = tf.cast(input, 'float32').div(tf.scalar(255));
-
-        // reshape input format (shape: [batch_size, width, height, channels])
-        input = input.expandDims();
-
-        // predict
-        const prediction = model.predict(input);
-
-        return prediction.dataSync();
-      }
-
-      function prediction() {
-        const imageData = getImageData();
-        const accuracyScores = getAccuracyScores(imageData);
-        const maxAccuracy = accuracyScores.indexOf(Math.max.apply(null, accuracyScores));
-
-        const elements = document.querySelectorAll(".accuracy");
-        elements.forEach(el => {
-          el.parentNode.classList.remove('is-selected');
-          const rowIndex = Number(el.dataset.rowIndex);
-          if (maxAccuracy === rowIndex) {
-            el.parentNode.classList.add('is-selected');
-          }
-          el.innerText = accuracyScores[rowIndex];
-        })
-      }
-
-      function reset() {
-        signaturePad.clear();
-        let elements = document.querySelectorAll(".accuracy");
-        elements.forEach(el => {
-          el.parentNode.classList.remove('is-selected');
-          el.innerText = '-';
-        })
-      }
-
-   </script>
+  </script>
 </body>
 </html>
