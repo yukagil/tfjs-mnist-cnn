@@ -81,7 +81,7 @@
     </div>
   </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/signature_pad/1.5.3/signature_pad.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.6.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@0.8.0"></script>
     <script>
 
       // init SignaturePad
@@ -119,15 +119,18 @@
       }
 
       function getAccuracyScores(imageData) {
-        // convert to tensor and normalized (shape: [width, height, channels])
+        // convert to tensor (shape: [width, height, channels])
         const channels = 1; // grayscale
-        let input = tf.fromPixels(imageData, channels).div(tf.scalar(255));
+        let input = tf.fromPixels(imageData, channels);
+
+        // normalized
+        input = tf.cast(input, 'float32').div(tf.scalar(255));
 
         // reshape input format (shape: [batch_size, width, height, channels])
         input = input.expandDims();
 
+        // predict
         const prediction = model.predict(input);
-        prediction.print(true) // for debug
 
         return prediction.dataSync();
       }
