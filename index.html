@@ -119,20 +119,23 @@
     }
 
     function getAccuracyScores(imageData) {
-      // convert to tensor (shape: [width, height, channels])
-      const channels = 1; // grayscale
-      let input = tf.fromPixels(imageData, channels);
 
-      // normalized
-      input = tf.cast(input, 'float32').div(tf.scalar(255));
+      const score = tf.tidy(() => {
+        // convert to tensor (shape: [width, height, channels])  
+        const channels = 1; // grayscale              
+        let input = tf.fromPixels(imageData, channels);
 
-      // reshape input format (shape: [batch_size, width, height, channels])
-      input = input.expandDims();
+        // normalized
+        input = tf.cast(input, 'float32').div(tf.scalar(255));
 
-      // predict
-      const prediction = model.predict(input);
+        // reshape input format (shape: [batch_size, width, height, channels])
+        input = input.expandDims();
 
-      return prediction.dataSync();
+        // predict
+        return model.predict(input).dataSync();
+      });
+
+      return score;
     }
 
     function prediction() {
