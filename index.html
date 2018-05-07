@@ -119,7 +119,7 @@
     }
 
     function getAccuracyScores(imageData) {
-      
+
       const score = tf.tidy(() => {
         // convert to tensor (shape: [width, height, channels])  
         const channels = 1; // grayscale              
@@ -141,7 +141,6 @@
     function prediction() {
       const imageData = getImageData();
       const accuracyScores = getAccuracyScores(imageData);
-      console.log(tf.memory())
       const maxAccuracy = accuracyScores.indexOf(Math.max.apply(null, accuracyScores));
 
       const elements = document.querySelectorAll(".accuracy");
